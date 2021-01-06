@@ -16,6 +16,11 @@ const ORDERBOOK_LOCK_TYPE = 'type'
 const PW_LOCK_CODEHASH = '0x58c5f491aba6d61678b7cf7edf4910b1f5e00ec0cde2f42e0abb4fd9aff25a63'
 const PW_LOCK_HASHTYPE = 'type'
 
+
+const signCKBPrivateKey = 'xxx' //update with your own private key
+// const addr = ckb.utils.privateKeyToAddress(signCKBPrivateKey)
+
+
 const userPWEthLock = {
   codeHash: PW_LOCK_CODEHASH,
   hashType: PW_LOCK_HASHTYPE,
@@ -33,6 +38,7 @@ const userEthCKBAddress = ckb.utils.fullPayloadToAddress({
 console.log("userEthCKBAddress: ", userEthCKBAddress)
 
 let recipientCKBAddress = userEthCKBAddress
+let recipientETHAddress = USER_ETH_ADDR
 
 const getOrCreateBridgeCell = async (
   recipientCkbAddress,
@@ -202,11 +208,35 @@ switch (tokenAddress) {
     break;
 }
 
+
+
+const  burnToken = async (fromLockScriptAddr,txFee,unlockFee,amount,tokenAddress,recipientAddress) => {
+  const postData = {
+    from_lockscript_addr: fromLockScriptAddr,
+    tx_fee: txFee,
+    unlock_fee: unlockFee,
+    amount: amount,
+    token_address: tokenAddress,
+    recipient_address: recipientAddress,
+  }
+  
+  console.log("burn postData: ", JSON.stringify(postData))
+  const rawTx = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData)
+  const signedTx = ckb.signTransaction(signCKBPrivateKey)(rawTx)
+  const txHash = await ckb.rpc.sendTransaction(signedTx)
+  return txHash
+}
+
+
 let bridgeFee = '0x0'
 let bridgeCells = [];
 let raw;
 
 let isBid = false;
+
+let unlockFee = "0x1"
+let unlockAmount = "0x2"
+let burnTxFee = "0.1"
 
 async function main() {
   let res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, 50);
@@ -236,6 +266,13 @@ async function main() {
 
   await Promise.all(crosschainTxHashes.map(txHash => relayEthToCKB(txHash)));
 
+  let burnFutures = [];
+  for (let index = 0; index < bridgeCells.length; index++) {
+    let burnFut = burnToken(recipientCKBAddress,burnTxFee,unlockFee, burnTxFee ,tokenAddress,recipientETHAddress);
+    burnFutures.push(burnFut);
+  }
+  const burnHashes = await Promise.all(burnFutures);
+  console.log({ burnHashes });
 }
 
 main();
