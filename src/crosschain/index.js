@@ -17,10 +17,6 @@ const PW_LOCK_CODEHASH = '0x58c5f491aba6d61678b7cf7edf4910b1f5e00ec0cde2f42e0abb
 const PW_LOCK_HASHTYPE = 'type'
 
 
-const signCKBPrivateKey = 'xxx' //update with your own private key
-// const addr = ckb.utils.privateKeyToAddress(signCKBPrivateKey)
-
-
 const userPWEthLock = {
   codeHash: PW_LOCK_CODEHASH,
   hashType: PW_LOCK_HASHTYPE,
@@ -208,26 +204,6 @@ switch (tokenAddress) {
     break;
 }
 
-
-
-const  burnToken = async (fromLockScriptAddr,txFee,unlockFee,amount,tokenAddress,recipientAddress) => {
-  const postData = {
-    from_lockscript_addr: fromLockScriptAddr,
-    tx_fee: txFee,
-    unlock_fee: unlockFee,
-    amount: amount,
-    token_address: tokenAddress,
-    recipient_address: recipientAddress,
-  }
-  
-  console.log("burn postData: ", JSON.stringify(postData))
-  const rawTx = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData)
-  const signedTx = ckb.signTransaction(signCKBPrivateKey)(rawTx)
-  const txHash = await ckb.rpc.sendTransaction(signedTx)
-  return txHash
-}
-
-
 let bridgeFee = '0x0'
 let bridgeCells = [];
 let raw;
@@ -238,8 +214,8 @@ let unlockFee = "0x1"
 let unlockAmount = "0x2"
 let burnTxFee = "0.1"
 
-async function main() {
-  let res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, 50);
+const batchLockToken = async(recipientCKBAddress, cellNum) => {
+  let res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, cellNum);
   bridgeCells = [...res.data.outpoints];
   console.log({ bridgeCells });
 
@@ -264,15 +240,69 @@ async function main() {
   const crosschainTxHashes = await Promise.all(futures);
   console.log({ crosschainTxHashes });
 
-  await Promise.all(crosschainTxHashes.map(txHash => relayEthToCKB(txHash)));
+  // await Promise.all(crosschainTxHashes.map(txHash => relayEthToCKB(txHash)));
+}
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+const  burnToken = async (fromLockScriptAddr,txFee,unlockFee,amount,tokenAddress,recipientAddress) => {
+  const postData = {
+    from_lockscript_addr: fromLockScriptAddr,
+    tx_fee: txFee,
+    unlock_fee: unlockFee,
+    amount: amount,
+    token_address: tokenAddress,
+    recipient_address: recipientAddress,
+  }
+  
+  console.log("burn postData: ", JSON.stringify(postData))
+  const rawTx = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData)
+  const signedTx = ckb.signTransaction(signCKBPrivateKey)(rawTx)
+  const txHash = await ckb.rpc.sendTransaction(signedTx)
+  return txHash
+}
+
+
+const generateWallets = (size) => {
+  const privkeys = [];
+  for (let i = 0; i < size; i++) {
+    const wallet = web3.eth.accounts.create();
+    privkeys.push(wallet.privateKey)
+  }
+  return privkeys;
+}
+
+const batchBurnToken = async(burnPrivkeys) => {
+  // TODO the capacity of those account could not be enough
+  // prepare account which have enough sudt to burn
+  for(let privkey of burnPrivkeys) {
+    const addr = ckb.utils.privateKeyToAddress(privkey)
+    await batchLockToken(addr, 1);
+  }
+
+  // wait relay the lock tx proof to CKB
+  await sleep(3*60*1000);
+
+  // burn those account sudt
   let burnFutures = [];
-  for (let index = 0; index < bridgeCells.length; index++) {
-    let burnFut = burnToken(recipientCKBAddress,burnTxFee,unlockFee, burnTxFee ,tokenAddress,recipientETHAddress);
+  for(let privkey of burnPrivkeys) {
+    const addr = ckb.utils.privateKeyToAddress(privkey)
+    let burnFut = burnToken(addr,burnTxFee,unlockFee, unlockAmount ,tokenAddress,recipientETHAddress);
     burnFutures.push(burnFut);
   }
   const burnHashes = await Promise.all(burnFutures);
   console.log({ burnHashes });
+}
+  
+
+async function main() {
+  const burnPrivkeys = generateWallets(50); //update with your own private key
+
+  await batchLockToken(recipientCKBAddress,50);
+  await batchBurnToken(burnPrivkeys);
+
 }
 
 main();
