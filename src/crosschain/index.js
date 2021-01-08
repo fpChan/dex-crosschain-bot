@@ -3,11 +3,17 @@ const { BufferParser } = require('../utils')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
 
-const ETH_NODE_URL='https://ropsten.infura.io/v3/' //add your own api token
-const FORCE_BRIDGER_SERVER_URL = 'http://local:1000' //update to your force server url
+const ETH_NODE_URL= 'http://127.0.0.1:8545' //add your own api token
+const FORCE_BRIDGER_SERVER_URL = 'http://127.0.0.1:3003' //update to your force server url
 const NODE_URL = 'http://127.0.0.1:8114/' //update to your node url
-const signEthPrivateKey = 'xxx' //update with your own private key
-const USER_ETH_ADDR = '0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE' //update with your own eth addr
+const signEthPrivateKey = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a' //update with your own private key
+// const USER_ETH_ADDR = '0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE' //update with your own eth addr
+
+// const ETH_NODE_URL = 'http://127.0.0.1:8545'
+// const FORCE_BRIDGER_SERVER_URL = 'http://127.0.0.1:3030'
+// const NODE_URL = 'http://127.0.0.1:8114/'
+// const signEthPrivateKey = 'c4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a'
+const USER_ETH_ADDR = '0x17c4b5CE0605F63732bfd175feCe7aC6b4620FD2'//orig; bob:'0xBeB7C1d39B59DF17613F82AF0EC265565414d608'
 
 const web3 = new Web3(ETH_NODE_URL);
 const ckb = new CKB(NODE_URL);
@@ -89,7 +95,7 @@ const placeCrossChainOrder = async (
     gas_price: BufferParser.toHexString(gasPrice),
     nonce: BufferParser.toHexString(nonce),
   }
-  console.log("lock postData: ", JSON.stringify(postData))
+  // console.log("lock postData: ", JSON.stringify(postData))
   const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/lock`, postData)
   return res
 }
@@ -226,9 +232,9 @@ const batchLockToken = async(recipientCKBAddress, cellNum) => {
     const res = await web3.eth.accounts.signTransaction(txFromBridge.data, signEthPrivateKey);
     const rawTX = res.rawTransaction;
     const txHash = res.transactionHash;
-    console.log({ rawTX, txHash });
+    // console.log({ rawTX, txHash });
     const receipt = await web3.eth.sendSignedTransaction(rawTX);
-    console.log("send success！", txHash);
+    // console.log("send success！", txHash);
     return txHash;
   }
 
@@ -238,18 +244,23 @@ const batchLockToken = async(recipientCKBAddress, cellNum) => {
     futures.push(fut);
   }
   const crosschainTxHashes = await Promise.all(futures);
-  console.log({ crosschainTxHashes });
+  console.error({ "lock hashes ": crosschainTxHashes});
+  
+  return crosschainTxHashes;
+}
 
-  // await Promise.all(crosschainTxHashes.map(txHash => relayEthToCKB(txHash)));
+const batchMintToken = async (crosschainTxHashes) => {
+  await Promise.all(crosschainTxHashes.map(txHash => relayEthToCKB(txHash)));
 }
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-const  burnToken = async (fromLockScriptAddr,txFee,unlockFee,amount,tokenAddress,recipientAddress) => {
+const  burnToken = async (privkey,txFee,unlockFee,amount,tokenAddress,recipientAddress) => {
+  const addr = ckb.utils.privateKeyToAddress(privkey,{ prefix: 'ckt' })
   const postData = {
-    from_lockscript_addr: fromLockScriptAddr,
+    from_lockscript_addr: addr,
     tx_fee: txFee,
     unlock_fee: unlockFee,
     amount: amount,
@@ -259,7 +270,7 @@ const  burnToken = async (fromLockScriptAddr,txFee,unlockFee,amount,tokenAddress
   
   console.log("burn postData: ", JSON.stringify(postData))
   const rawTx = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData)
-  const signedTx = ckb.signTransaction(signCKBPrivateKey)(rawTx)
+  const signedTx = ckb.signTransaction(privkey)(rawTx)
   const txHash = await ckb.rpc.sendTransaction(signedTx)
   return txHash
 }
@@ -277,31 +288,40 @@ const generateWallets = (size) => {
 const batchBurnToken = async(burnPrivkeys) => {
   // TODO the capacity of those account could not be enough
   // prepare account which have enough sudt to burn
-  for(let privkey of burnPrivkeys) {
-    const addr = ckb.utils.privateKeyToAddress(privkey)
-    await batchLockToken(addr, 1);
+
+  let waitMintTxs = [];
+  for (let i = 0; i < burnPrivkeys.length; i++) {
+
+    // for(let privkey of burnPrivkeys) {
+    const addr = ckb.utils.privateKeyToAddress(burnPrivkeys[i],{ prefix: 'ckt' })
+    console.error("burn addr ",i, addr);
+    let txs =  await batchLockToken(addr, 1);
+    waitMintTxs.push.apply(waitMintTxs,txs);
   }
 
+  await batchMintToken(waitMintTxs);
   // wait relay the lock tx proof to CKB
-  await sleep(3*60*1000);
+  await sleep(1000);
+  console.error("burn is done");
 
   // burn those account sudt
   let burnFutures = [];
-  for(let privkey of burnPrivkeys) {
-    const addr = ckb.utils.privateKeyToAddress(privkey)
-    let burnFut = burnToken(addr,burnTxFee,unlockFee, unlockAmount ,tokenAddress,recipientETHAddress);
+  for (let i = 0; i < burnPrivkeys.length; i++) {
+    let burnFut = burnToken(burnPrivkeys[i],burnTxFee,unlockFee, unlockAmount ,tokenAddress,recipientETHAddress);
     burnFutures.push(burnFut);
   }
   const burnHashes = await Promise.all(burnFutures);
-  console.log({ burnHashes });
+  console.error({ "burn hashes ": burnHashes});
+
+  // console.log({ burnHashes });
 }
   
 
 async function main() {
-  const burnPrivkeys = generateWallets(50); //update with your own private key
+  const burnPrivkeys = generateWallets(10); //update with your own private key
 
-  await batchLockToken(recipientCKBAddress,50);
-  await batchBurnToken(burnPrivkeys);
+  await batchLockToken(recipientCKBAddress,10);
+  // await batchBurnToken(burnPrivkeys);
 
 }
 
