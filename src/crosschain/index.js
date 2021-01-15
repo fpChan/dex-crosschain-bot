@@ -39,7 +39,7 @@ const userEthCKBAddress = ckb.utils.fullPayloadToAddress({
 })
 console.log("userEthCKBAddress: ", userEthCKBAddress)
 
-let recipientCKBAddress = userEthCKBAddress
+// let recipientCKBAddress = userEthCKBAddress
 let recipientETHAddress = USER_ETH_ADDR
 
 const getOrCreateBridgeCell = async (
@@ -68,7 +68,7 @@ const getOrCreateBridgeCell = async (
 }
 
 const placeCrossChainOrder = async (
-  index, bridgeCells, udtDecimal,
+  index, bridgeCells, udtDecimal,recipientAddress,
   marketPrice, orderAmount, isBid,
   tokenAddress,
   bridgeFee,
@@ -80,7 +80,7 @@ const placeCrossChainOrder = async (
 
   const sudtRelatedData = sudtExtraData(marketPrice, orderAmount, isBid, udtDecimal);
   const amount = BufferParser.toHexString(sudtRelatedData.payAmount)
-  let recipientAddress = recipientCKBAddress;
+  // let recipientAddress = recipientCKBAddress;
   let op = bridgeCells[index]
   let sudtData = sudtRelatedData.orderData;
 
@@ -228,13 +228,11 @@ const batchLockToken = async(recipientCKBAddress, cellNum) => {
   const gasPrice = await web3.eth.getGasPrice()
   const nonce = await web3.eth.getTransactionCount(USER_ETH_ADDR)
   const send_with_outpoint = async (index) => {
-    const txFromBridge = await placeCrossChainOrder(index, bridgeCells, udtDecimal, orderPrice, orderAmount, isBid, tokenAddress, bridgeFee, gasPrice, nonce + index);
+    const txFromBridge = await placeCrossChainOrder(index, bridgeCells, udtDecimal, recipientCKBAddress,orderPrice, orderAmount, isBid, tokenAddress, bridgeFee, gasPrice, nonce + index);
     const res = await web3.eth.accounts.signTransaction(txFromBridge.data, signEthPrivateKey);
     const rawTX = res.rawTransaction;
     const txHash = res.transactionHash;
-    // console.log({ rawTX, txHash });
     const receipt = await web3.eth.sendSignedTransaction(rawTX);
-    // console.log("send success！", txHash);
     return txHash;
   }
 
@@ -269,8 +267,17 @@ const  burnToken = async (privkey,txFee,unlockFee,amount,tokenAddress,recipientA
   }
   
   console.log("burn postData: ", JSON.stringify(postData))
-  const rawTx = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData)
+  const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData);
+  const rawTx = ckb.rpc.resultFormatter.toTransaction(res.data.raw_tx)
+
+  rawTx.witnesses = rawTx.inputs.map((_, i) => (i > 0 ? '0x' : {
+    lock: '',
+    inputType: '',
+    outputType: '',
+  }));
+
   const signedTx = ckb.signTransaction(privkey)(rawTx)
+  delete signedTx.hash
   const txHash = await ckb.rpc.sendTransaction(signedTx)
   return txHash
 }
@@ -298,11 +305,10 @@ const batchBurnToken = async(burnPrivkeys) => {
     let txs =  await batchLockToken(addr, 1);
     waitMintTxs.push.apply(waitMintTxs,txs);
   }
-
-  await batchMintToken(waitMintTxs);
+  // await batchMintToken(waitMintTxs);
   // wait relay the lock tx proof to CKB
-  await sleep(1000);
-  console.error("burn is done");
+  await sleep(4*60*1000);
+  console.error("start burn");
 
   // burn those account sudt
   let burnFutures = [];
@@ -312,16 +318,22 @@ const batchBurnToken = async(burnPrivkeys) => {
   }
   const burnHashes = await Promise.all(burnFutures);
   console.error({ "burn hashes ": burnHashes});
-
-  // console.log({ burnHashes });
 }
   
 
 async function main() {
-  const burnPrivkeys = generateWallets(10); //update with your own private key
-
-  await batchLockToken(recipientCKBAddress,10);
-  // await batchBurnToken(burnPrivkeys);
+  burnPrivkeys = [
+    "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
+    "0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc",
+    // "63d86723e08f0f813a36ce6aa123bb2289d90680ae1e99d4de8cdb334553f24d",
+    // "a6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80",
+    // "13b08bb054d5dd04013156dced8ba2ce4d8cc5973e10d905a228ea1abc267e60",
+    // "a6b023fec4fc492c23c0e999ab03b01a6ca5524a3560725887a8de4362f9c9cc"
+  ]
+  // const burnPrivkeys = generateWallets(2); //update with your own private key
+  console.error("burnPrivkeys ",burnPrivkeys);
+  // await batchLockToken("ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",4);
+  await batchBurnToken(burnPrivkeys);
 
 }
 
