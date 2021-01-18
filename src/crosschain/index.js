@@ -159,7 +159,7 @@ const prepareBridgeCells = async (privkeys,cellNum) => {
         createFutures.push(createFut);
     }
     const createOutpoints = await Promise.all(createFutures);
-    console.log("create bridge outpoints",createOutpoints)
+    console.log("create bridge outpoints",createOutpoints.map((res) => { return res.data.outpoints ;}))
 }
 
 
