@@ -176,7 +176,13 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         args: fromPublicKeyHash,
     }
     const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
-    console.log("unspentCells",unspentCells)
+    let liveCells = await unspentCells.map(async (cell) => {
+        let res = await ckb.rpc.getLiveCell(cell.outPoint,false);
+        if(res.status === 'live') {
+            return res.cell
+        }
+    });
+    console.log("liveCells",liveCells)
     console.log(fromAddress)
 
     let tx = ckb.generateRawTransaction({
