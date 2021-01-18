@@ -4,8 +4,6 @@ const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
 const { Indexer, CellCollector } = require('@ckb-lumos/indexer')
-const LUMOS_DB = path.join(os.tmpdir(), 'lumos_db')
-
 const {getOrCreateBridgeCell,placeCrossChainOrder} = require("./method");
 const {
     ETH_NODE_URL,
@@ -30,8 +28,31 @@ const {
     RichPrivkey,
 } = require("./params");
 
+var fs = require('fs');
+
+function deleteall(path) {
+    var files = [];
+    if(fs.existsSync(path)) {
+        files = fs.readdirSync(path);
+        files.forEach(function(file, index) {
+            var curPath = path + "/" + file;
+            if(fs.statSync(curPath).isDirectory()) { // recurse
+                deleteall(curPath);
+            } else { // delete file
+                fs.unlinkSync(curPath);
+            }
+        });
+        fs.rmdirSync(path);
+    }
+};
+
 const ckb = new CKB(NODE_URL);
 const web3 = new Web3(ETH_NODE_URL);
+const lumos_db_tmp = "~/.lumos_db_tmp/"
+deleteall(lumos_db_tmp)
+const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
+
+
 /**
  * lumos indexer
  */
@@ -176,12 +197,14 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         args: fromPublicKeyHash,
     }
     const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
-    let liveCells = await unspentCells.map(async (cell) => {
-        let res = await ckb.rpc.getLiveCell(cell.outPoint,false);
+    let liveCells = []
+    for (let i = 0; i < unspentCells.length; i++) {
+        let res = await ckb.rpc.getLiveCell(unspentCells[i].outPoint,false);
+        console.log(unspentCells[i].capacity, res.status)
         if(res.status === 'live') {
-            return res.cell
+            liveCells.push(unspentCells[i])
         }
-    });
+    }
     console.log("liveCells",liveCells)
     console.log(fromAddress)
 
