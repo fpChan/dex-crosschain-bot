@@ -1,6 +1,11 @@
+const path = require('path')
+const os = require('os')
 const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
+const { Indexer, CellCollector } = require('@ckb-lumos/indexer')
+const LUMOS_DB = path.join(os.tmpdir(), 'lumos_db')
+
 const {getOrCreateBridgeCell,placeCrossChainOrder} = require("./method");
 const {
     ETH_NODE_URL,
@@ -27,6 +32,11 @@ const {
 
 const ckb = new CKB(NODE_URL);
 const web3 = new Web3(ETH_NODE_URL);
+/**
+ * lumos indexer
+ */
+const indexer = new Indexer(NODE_URL, LUMOS_DB)
+
 // const userPWEthLockHash = ckb.utils.scriptToHash(userPWEthLock);
 // console.log("userPWEthLockHash: ", userPWEthLockHash);
 
@@ -111,7 +121,7 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
 
 const batchBurnToken = async (burnPrivkeys) => {
     // prepare account which have enough sudt to burn
-    // await prepareAccounts(RichPrivkey,burnPrivkeys)
+    await prepareAccounts(RichPrivkey,burnPrivkeys)
 
     console.error("start lock to prepare account which have enough sudt to burn ");
     let waitMintTxs = [];
@@ -123,7 +133,7 @@ const batchBurnToken = async (burnPrivkeys) => {
         let txs = await batchLockToken(addr, 1);
         waitMintTxs.push.apply(waitMintTxs, txs);
     }
-    console.log("end lock which prepare some account");
+    console.log("end lock which prepare some account, please wait 4 mintue");
     // await batchMintToken(waitMintTxs);
     // wait relay the lock tx proof to CKB
     await sleep(4 * 60 * 1000);
@@ -143,10 +153,19 @@ const batchBurnToken = async (burnPrivkeys) => {
 
 
 const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
-    await ckb.loadDeps()
     const fromAddress = ckb.utils.privateKeyToAddress(fromPrivkey, {prefix: 'ckt'})
     const fromPublicKey = ckb.utils.privateKeyToPublicKey(fromPrivkey)
     const fromPublicKeyHash = `0x${ckb.utils.blake160(fromPublicKey, 'hex')}`
+
+    // await indexer.startForever()
+    await ckb.loadDeps()
+    let lock =    {
+        codeHash: "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+        hashType: "type",
+        args: fromPublicKeyHash,
+    }
+    const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
+    console.log("unspentCells",unspentCells)
     console.log(fromAddress)
 
     let tx = ckb.generateRawTransaction({
@@ -155,7 +174,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         capacity: BigInt(61000000000),
         fee: BigInt(100000),
         safeMode: true,
-        cells: unspentRichCells,
+        cells: unspentCells,
         deps: [ckb.config.secp256k1Dep],
     });
     let restCapacity = BigInt(0);
@@ -180,7 +199,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
             type: null,
         };
         tx.outputs.push(output)
-        tx.outputsData.push("0x1");
+        tx.outputsData.push("0x");
     }
     let output = {
         capacity: "0x"+(restCapacity - capacity * BigInt(toPrivkeys.length)).toString(16),
@@ -192,29 +211,20 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         type: null,
     };
     tx.outputs.push(output)
-    tx.outputsData.push("0x2");
+    tx.outputsData.push("0x");
     tx.witnesses = tx.inputs.map((_, i) => (i > 0 ? '0x' : {
         lock: '',
         inputType: '',
         outputType: '',
     }));
-    console.log(JSON.stringify(tx, null, 2))
     const signedTx = ckb.signTransaction(fromPrivkey)(tx)
+    // console.log(JSON.stringify(signedTx, null, 2))
     const txHash = await ckb.rpc.sendTransaction(signedTx)
     console.log("prepare account tx hash",txHash)
 }
 async function main() {
-    let burnPrivkeys = [
-        "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
-        "0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc",
-        "0x63d86723e08f0f813a36ce6aa123bb2289d90680ae1e99d4de8cdb334553f24d",
-        "0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80",
-        "0x13b08bb054d5dd04013156dced8ba2ce4d8cc5973e10d905a228ea1abc267e60",
-        "0xa6b023fec4fc492c23c0e999ab03b01a6ca5524a3560725887a8de4362f9c9cc"
-    ]
-    // const burnPrivkeys = generateWallets(2); //update with your own private key
+    const burnPrivkeys = generateWallets(40); //update with your own private key
     console.log(burnPrivkeys)
-    // console.error("burnPrivkeys ", burnPrivkeys);
     await batchBurnToken(burnPrivkeys);
 }
 
