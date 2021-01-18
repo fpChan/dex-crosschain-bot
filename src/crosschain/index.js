@@ -58,8 +58,9 @@ const generateWallets = (size) => {
 
 
 const batchLockToken = async (recipientCKBAddress, cellNum) => {
-    let res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, cellNum);
-    let bridgeCells = [...res.data.outpoints];
+    // bridge has been created
+    let get_res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, cellNum);
+    let bridgeCells = [...get_res.data.outpoints];
     console.log("bridgeCells",bridgeCells);
 
     const gasPrice = await web3.eth.getGasPrice()
@@ -149,7 +150,17 @@ const batchBurnToken = async (burnPrivkeys) => {
     console.log("end burn");
 }
 
+const prepareBridgeCells = async (privkeys,cellNum) => {
+    let createFutures = [];
+    for (let i = 0; i < privkeys.length; i++) {
+        const addr = ckb.utils.privateKeyToAddress(privkeys[i], {prefix: 'ckt'})
 
+        let createFut = getOrCreateBridgeCell(addr, tokenAddress, bridgeFee, cellNum);
+        createFutures.push(createFut);
+    }
+    const createOutpoints = await Promise.all(createFutures);
+    console.log("create bridge outpoints",createOutpoints)
+}
 
 
 const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
@@ -222,9 +233,11 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
     const txHash = await ckb.rpc.sendTransaction(signedTx)
     console.log("prepare account tx hash",txHash)
 }
+
 async function main() {
-    const burnPrivkeys = generateWallets(40); //update with your own private key
+    const burnPrivkeys = generateWallets(40);
     console.log(burnPrivkeys)
+    await prepareBridgeCells(burnPrivkeys,1)
     await batchBurnToken(burnPrivkeys);
 }
 
