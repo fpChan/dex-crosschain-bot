@@ -51,12 +51,8 @@ const web3 = new Web3(ETH_NODE_URL);
 const lumos_db_tmp = "lumos_db_tmp/"
 deleteall(lumos_db_tmp)
 const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
-
-
-/**
- * lumos indexer
- */
 const indexer = new Indexer(NODE_URL, LUMOS_DB)
+indexer.startForever()
 
 // const userPWEthLockHash = ckb.utils.scriptToHash(userPWEthLock);
 // console.log("userPWEthLockHash: ", userPWEthLockHash);
