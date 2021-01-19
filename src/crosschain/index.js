@@ -49,10 +49,9 @@ function deleteall(path) {
 const ckb = new CKB(NODE_URL);
 const web3 = new Web3(ETH_NODE_URL);
 const lumos_db_tmp = "lumos_db_tmp/"
-deleteall(lumos_db_tmp)
 const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
 const indexer = new Indexer(NODE_URL, LUMOS_DB)
-indexer.startForever()
+
 
 // const userPWEthLockHash = ckb.utils.scriptToHash(userPWEthLock);
 // console.log("userPWEthLockHash: ", userPWEthLockHash);
@@ -260,12 +259,14 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
 }
 
 async function main() {
+    indexer.startForever()
     const concurrency_number = 40
     const burnPrivkeys = generateWallets(concurrency_number);
     console.log(burnPrivkeys)
     await prepareBridgeCells(burnPrivkeys,1)
     await batchBurnToken(burnPrivkeys);
-    console.log("please press ctrl + C to end the process")
+    indexer.stop()
+    deleteall(lumos_db_tmp)
 }
 
 main();
