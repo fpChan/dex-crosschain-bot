@@ -75,14 +75,14 @@ const generateWallets = (size) => {
 
 const batchLockToken = async (recipientCKBAddress, cellNum) => {
     // bridge has been created
-    let get_res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, cellNum);
+    // let get_res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, cellNum);
     let bridgeCells = [...get_res.data.outpoints];
     console.log("bridgeCells",bridgeCells);
 
     const gasPrice = await web3.eth.getGasPrice()
     const nonce = await web3.eth.getTransactionCount(USER_ETH_ADDR)
     const send_with_outpoint = async (index) => {
-        const txFromBridge = await placeCrossChainOrder(index, bridgeCells, udtDecimal, recipientCKBAddress, orderPrice, orderAmount, isBid, tokenAddress, bridgeFee, gasPrice, nonce + index);
+        const txFromBridge = await placeCrossChainOrder(index, "", udtDecimal, recipientCKBAddress, orderPrice, orderAmount, isBid, tokenAddress, bridgeFee, gasPrice, nonce + index);
         const res = await web3.eth.accounts.signTransaction(txFromBridge.data, signEthPrivateKey);
         const rawTX = res.rawTransaction;
         const txHash = res.transactionHash;
@@ -263,7 +263,6 @@ async function main() {
     const concurrency_number = 40
     const burnPrivkeys = generateWallets(concurrency_number);
     console.log(burnPrivkeys)
-    await prepareBridgeCells(burnPrivkeys,1)
     await batchBurnToken(burnPrivkeys);
     indexer.stop()
     deleteall(lumos_db_tmp)
