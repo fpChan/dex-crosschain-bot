@@ -51,7 +51,7 @@ const web3 = new Web3(ETH_NODE_URL);
 const lumos_db_tmp = "lumos_db_tmp/"
 const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
 const indexer = new Indexer(NODE_URL, LUMOS_DB)
-
+indexer.startForever()
 
 // const userPWEthLockHash = ckb.utils.scriptToHash(userPWEthLock);
 // console.log("userPWEthLockHash: ", userPWEthLockHash);
@@ -76,8 +76,8 @@ const generateWallets = (size) => {
 const batchLockToken = async (recipientCKBAddress, cellNum) => {
     // bridge has been created
     // let get_res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, cellNum);
-    let bridgeCells = [...get_res.data.outpoints];
-    console.log("bridgeCells",bridgeCells);
+    // let bridgeCells = [...get_res.data.outpoints];
+    // console.log("bridgeCells",bridgeCells);
 
     const gasPrice = await web3.eth.getGasPrice()
     const nonce = await web3.eth.getTransactionCount(USER_ETH_ADDR)
@@ -91,7 +91,7 @@ const batchLockToken = async (recipientCKBAddress, cellNum) => {
     }
 
     let futures = [];
-    for (let index = 0; index < bridgeCells.length; index++) {
+    for (let index = 0; index < cellNum; index++) {
         let fut = send_with_outpoint(index);
         futures.push(fut);
     }
@@ -259,8 +259,8 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
 }
 
 async function main() {
-    indexer.startForever()
-    const concurrency_number = 40
+    deleteall(lumos_db_tmp)
+    const concurrency_number = 1
     const burnPrivkeys = generateWallets(concurrency_number);
     console.log(burnPrivkeys)
     await batchBurnToken(burnPrivkeys);
