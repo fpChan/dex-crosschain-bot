@@ -207,10 +207,10 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
     let tx = ckb.generateRawTransaction({
         fromAddress,
         toAddress: "ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
-        capacity: BigInt(61000000000),
+        capacity: BigInt(1500000000000),
         fee: BigInt(100000),
         safeMode: true,
-        cells: unspentCells,
+        cells: liveCells,
         deps: [ckb.config.secp256k1Dep],
     });
     let restCapacity = BigInt(0);
@@ -220,7 +220,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
     console.log("restCapacity",restCapacity)
     tx.outputs.splice(0,   tx.outputs.length);
     tx.outputsData.splice(0,   tx.outputsData.length);
-    let capacity = BigInt( 25700000000);
+    let capacity = BigInt( 150000000000);
     for (let i = 0; i < toPrivkeys.length; i++) {
         // const addr = ckb.utils.privateKeyToAddress(toPrivkeys[i], {prefix: 'ckt'})
         const publicKey = ckb.utils.privateKeyToPublicKey(toPrivkeys[i])
@@ -260,10 +260,12 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
 }
 
 async function main() {
-    const burnPrivkeys = generateWallets(40);
+    const concurrency_number = 40
+    const burnPrivkeys = generateWallets(concurrency_number);
     console.log(burnPrivkeys)
     await prepareBridgeCells(burnPrivkeys,1)
     await batchBurnToken(burnPrivkeys);
+    console.log("please press ctrl + C to end the process")
 }
 
 main();
