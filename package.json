@@ -10,6 +10,7 @@
     "send": "node src/crosschain/index.js"
   },
   "dependencies": {
+    "@ckb-lumos/indexer": "0.14.1",
     "@nervosnetwork/ckb-sdk-core": "^0.38.2",
     "axios": "^0.21.0",
     "bignumber.js": "^9.0.1",
