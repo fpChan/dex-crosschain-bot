@@ -39,7 +39,7 @@ const placeCrossChainOrder = async (
     nonce
 ) => {
     let ethAddress = USER_ETH_ADDR
-    console.log("gasPrice, nonce: ", gasPrice, nonce)
+    console.log("recipientAddress: ", recipientAddress ,"gasPrice, nonce: ", gasPrice, nonce)
 
     const sudtRelatedData = sudtExtraData(marketPrice, orderAmount, isBid, udtDecimal);
     const amount = BufferParser.toHexString(sudtRelatedData.payAmount)
@@ -101,7 +101,71 @@ const formatOrderData = (orderAmount, price, isBid) => {
     return dataHex;
 };
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+const getLockStatus = async (ethLockTxHash) => {
+    const postData = {
+        eth_lock_tx_hash:ethLockTxHash
+    }
+    let is_success = true
+    while (true) {
+        try {
+            const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_eth_to_ckb_status`, postData)
+            console.log("status res : ",res)
+            if ( res.data.status === 'success'){
+                break
+            }
+        }catch (err){
+            console.error("failed get_eth_to_ckb_status of ", ethLockTxHash," error : ",err)
+            break;
+        }
+        await sleep(20*1000)
+    }
+}
+const getSudtBalance = async (ckb_address,eth_token_address) => {
+    const postData = {
+        address:ckb_address,
+        token_address:eth_token_address
+    }
+    try {
+        const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_sudt_balance`, postData)
+        console.log("sudt balance of ", ckb_address, " is : ",res)
+    }catch (err){
+        console.error("failed get_sudt_balance of ", ckb_address," error : ",err)
+    }
+}
+
+const getBestBlockHeight = async () => {
+    try {
+        const ckb_height = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_best_block_height`,    {chain: "ckb"})
+        const eth_height = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_best_block_height`,    {chain: "eth"})
+
+        console.log("ckb_height", ckb_height, " eth_height : ",eth_height)
+    }catch (err){
+        console.error("failed get_best_block_height error : ",err)
+    }
+}
+
+const getCrosschainHistory = async (ethRecipientAddr) => {
+    const postData = {
+        eth_recipient_addr:ethRecipientAddr
+    }
+    try {
+        const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_crosschain_history`, postData)
+        console.log("get_crosschain_history  ", ethRecipientAddr, res)
+    }catch (err){
+        console.error("failed get_crosschain_history of ", ethRecipientAddr," error : ",err)
+    }
+}
+
 module.exports= {
     placeCrossChainOrder,
-    getOrCreateBridgeCell
+    getOrCreateBridgeCell,
+    sleep,
+    getLockStatus,
+    getSudtBalance,
+    getBestBlockHeight,
+    getCrosschainHistory
 }
