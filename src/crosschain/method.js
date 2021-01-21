@@ -109,17 +109,16 @@ const getLockStatus = async (ethLockTxHash) => {
     const postData = {
         eth_lock_tx_hash:ethLockTxHash
     }
-    let is_success = true
     while (true) {
         try {
             const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_eth_to_ckb_status`, postData)
-            console.log("status res : ",res.data)
+            console.log(ethLockTxHash," eth_to_ckb_status : ",res.data.status,res.data.err_msg)
             if ( res.data.status === 'success'){
                 break
             }
         }catch (err){
-            console.error("failed get_eth_to_ckb_status of ", ethLockTxHash," error : ",err)
-            break;
+            console.error("failed get_eth_to_ckb_status of ", ethLockTxHash," error : ",err.response.data)
+            // break;
         }
         await sleep(20*1000)
     }
@@ -133,7 +132,7 @@ const getSudtBalance = async (ckb_address,eth_token_address) => {
         const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_sudt_balance`, postData)
         console.log("sudt balance of ", ckb_address, " is : ",res.data.balance)
     }catch (err){
-        console.error("failed get_sudt_balance of ", ckb_address," error : ",err)
+        console.error("failed get_sudt_balance of ", ckb_address," error : ",err.response.data)
     }
 }
 
@@ -144,11 +143,14 @@ const getBestBlockHeight = async () => {
 
         console.log("ckb_height", ckb_height.data, " eth_height : ",eth_height.data)
     }catch (err){
-        console.error("failed get_best_block_height error : ",err)
+        console.error("failed get_best_block_height error : ",err.response.data)
     }
 }
 
 const getCrosschainHistory = async (ethRecipientAddr) => {
+    if(ethRecipientAddr.indexOf("0x") == 0){
+        ethRecipientAddr = ethRecipientAddr.substring(2)
+    }
     const postData = {
         eth_recipient_addr:ethRecipientAddr
     }
@@ -156,7 +158,7 @@ const getCrosschainHistory = async (ethRecipientAddr) => {
         const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_crosschain_history`, postData)
         console.log("get_crosschain_history  ", ethRecipientAddr, res.data)
     }catch (err){
-        console.error("failed get_crosschain_history of ", ethRecipientAddr," error : ",err)
+        console.error("failed get_crosschain_history of ", ethRecipientAddr," error : ",err.response.data)
     }
 }
 
