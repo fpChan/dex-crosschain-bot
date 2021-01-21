@@ -289,7 +289,7 @@ const batchBurnToken = async (burnPrivkeys) => {
     console.log("****************** end lock , please wait 3 mintue to relay lock proof and relay *******************");
     // await batchMintToken(waitMintTxs);
     // wait relay the lock tx proof to CKB
-    await sleep(3 * 60 * 1000);
+    await sleep(4 * 60 * 1000);
     console.log("**********************************        start burn sudt        ***********************************");
     // burn those account sudt
     let burnFutures = [];
@@ -299,7 +299,7 @@ const batchBurnToken = async (burnPrivkeys) => {
     }
     const burnHashes = await Promise.all(burnFutures);
     console.log("burn hashes ", burnHashes);
-    console.log("***********************************   end burn and test interface    ********************************");
+    console.log("***********************************   end burn and start test interface    ********************************");
     for (let i = 0; i < burnPrivkeys.length; i++) {
         const addr = ckb.utils.privateKeyToAddress(burnPrivkeys[i], {prefix: 'ckt'})
         await getSudtBalance(addr, tokenAddress)
@@ -311,6 +311,7 @@ const batchBurnToken = async (burnPrivkeys) => {
             await getLockStatus(lockHashes[i][j])
         }
     }
+    console.log("***********************************   end test interface    ********************************");
 }
 
 async function main() {
