@@ -109,10 +109,11 @@ const getLockStatus = async (ethLockTxHash) => {
     const postData = {
         eth_lock_tx_hash:ethLockTxHash
     }
+    let i = 0;
     while (true) {
         try {
             const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_eth_to_ckb_status`, postData)
-            console.log(ethLockTxHash," eth_to_ckb_status : ",res.data.status,res.data.err_msg)
+            console.log(ethLockTxHash," retry : ", i," eth_to_ckb_status : ",res.data.status," err_msg : ", res.data.err_msg)
             if ( res.data.status === 'success'){
                 break
             }
@@ -120,7 +121,8 @@ const getLockStatus = async (ethLockTxHash) => {
             console.error("failed get_eth_to_ckb_status of ", ethLockTxHash," error : ",err.response.data)
             // break;
         }
-        await sleep(20*1000)
+        i++;
+        await sleep(30*1000)
     }
 }
 const getSudtBalance = async (ckb_address,eth_token_address) => {
@@ -148,7 +150,7 @@ const getBestBlockHeight = async () => {
 }
 
 const getCrosschainHistory = async (ethRecipientAddr) => {
-    if(ethRecipientAddr.indexOf("0x") == 0){
+    if(ethRecipientAddr.indexOf("0x") === 0){
         ethRecipientAddr = ethRecipientAddr.substring(2)
     }
     const postData = {
