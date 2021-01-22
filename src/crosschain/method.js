@@ -119,13 +119,36 @@ const getLockStatus = async (ethLockTxHash) => {
                 break
             }
         }catch (err){
-            console.error("failed get_eth_to_ckb_status of ", ethLockTxHash," error : ",err.response.data)
+            console.error("failed get_eth_to_ckb_status of lock ", ethLockTxHash," error : ",err.response.data)
             // break;
         }
         i++;
         await sleep(30*1000)
     }
 }
+
+const getBurnStatus = async (ckb_burn_tx_hash) => {
+    const postData = {
+        ckb_burn_tx_hash:ckb_burn_tx_hash
+    }
+    let i = 0;
+    while (true) {
+        try {
+            const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_ckb_to_eth_status`, postData)
+            console.log(ckb_burn_tx_hash," retry : ", i," eth_to_ckb_status : ",res.data.status)
+            if ( res.data.status === 'success'){
+                console.log(ckb_burn_tx_hash,"mint success")
+                break
+            }
+        }catch (err){
+            console.error("failed get_ckb_to_eth_status of burn ", ckb_burn_tx_hash," error : ",err.response.data)
+            // break;
+        }
+        i++;
+        await sleep(30*1000)
+    }
+}
+
 const getSudtBalance = async (ckb_address,eth_token_address) => {
     const postData = {
         address:ckb_address,
@@ -182,6 +205,7 @@ module.exports= {
     getOrCreateBridgeCell,
     sleep,
     getLockStatus,
+    getBurnStatus,
     getSudtBalance,
     getBestBlockHeight,
     getCrosschainHistory,

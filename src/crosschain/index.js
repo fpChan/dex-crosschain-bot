@@ -4,7 +4,7 @@ const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
 const { Indexer, CellCollector } = require('@ckb-lumos/indexer')
-const {getOrCreateBridgeCell,placeCrossChainOrder,sleep,getLockStatus,getCrosschainHistory,getSudtBalance,getBestBlockHeight,initToken} = require("./method");
+const {getOrCreateBridgeCell,placeCrossChainOrder,sleep,getLockStatus,getCrosschainHistory,getSudtBalance,getBestBlockHeight,initToken,getBurnStatus} = require("./method");
 const {
     ETH_NODE_URL,
     FORCE_BRIDGER_SERVER_URL,
@@ -222,7 +222,7 @@ const batchLockToken = async (recipientCKBAddress, cellNum, nonce) => {
         // await sleep( 90 * 1000);
         let txHash =receipt.transactionHash;
 
-        if(txHash.indexOf("0x") == 0){
+        if(txHash.indexOf("0x") === 0){
             txHash = txHash.substring(2)
         }
         await getLockStatus(txHash)
@@ -278,7 +278,11 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
 
     const signedTx = ckb_client.signTransaction(privkey)(rawTx)
     delete signedTx.hash
-    const txHash = await ckb_client.rpc.sendTransaction(signedTx)
+    let txHash = await ckb_client.rpc.sendTransaction(signedTx)
+    if(txHash.indexOf("0x") === 0){
+        txHash = txHash.substring(2)
+    }
+    await getBurnStatus(txHash)
     return txHash
 }
 
