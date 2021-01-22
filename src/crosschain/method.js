@@ -164,6 +164,18 @@ const getCrosschainHistory = async (ethRecipientAddr) => {
     }
 }
 
+const initToken = async (token_addr) => {
+    const postData = {
+        token_address:token_addr
+    }
+    try {
+        const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/init_token`, postData)
+        console.log("init_token  ", token_addr, res.data)
+    }catch (err){
+        console.error("failed init_token of ", token_addr," error : ",err.response.data)
+    }
+}
+
 module.exports= {
     placeCrossChainOrder,
     getOrCreateBridgeCell,
@@ -171,5 +183,6 @@ module.exports= {
     getLockStatus,
     getSudtBalance,
     getBestBlockHeight,
-    getCrosschainHistory
+    getCrosschainHistory,
+    initToken
 }

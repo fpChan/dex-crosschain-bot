@@ -4,7 +4,7 @@ const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
 const { Indexer, CellCollector } = require('@ckb-lumos/indexer')
-const {getOrCreateBridgeCell,placeCrossChainOrder,sleep,getLockStatus,getCrosschainHistory,getSudtBalance,getBestBlockHeight} = require("./method");
+const {getOrCreateBridgeCell,placeCrossChainOrder,sleep,getLockStatus,getCrosschainHistory,getSudtBalance,getBestBlockHeight,initToken} = require("./method");
 const {
     ETH_NODE_URL,
     FORCE_BRIDGER_SERVER_URL,
@@ -247,7 +247,8 @@ const batchMintToken = async (crosschainTxHashes) => {
 
 
 const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipientAddress) => {
-    const addr = ckb.utils.privateKeyToAddress(privkey, {prefix: 'ckt'})
+    const ckb_client = new CKB(NODE_URL);
+    const addr = ckb_client.utils.privateKeyToAddress(privkey, {prefix: 'ckt'})
     const postData = {
         from_lockscript_addr: addr,
         tx_fee: txFee,
@@ -259,7 +260,7 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
 
     console.log("burn postData: ", JSON.stringify(postData))
     const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData);
-    const rawTx = ckb.rpc.resultFormatter.toTransaction(res.data.raw_tx)
+    const rawTx = ckb_client.rpc.resultFormatter.toTransaction(res.data.raw_tx)
 
     rawTx.witnesses = rawTx.inputs.map((_, i) => (i > 0 ? '0x' : {
         lock: '',
@@ -267,15 +268,16 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
         outputType: '',
     }));
 
-    const signedTx = ckb.signTransaction(privkey)(rawTx)
+    const signedTx = ckb_client.signTransaction(privkey)(rawTx)
     delete signedTx.hash
-    const txHash = await ckb.rpc.sendTransaction(signedTx)
+    const txHash = await ckb_client.rpc.sendTransaction(signedTx)
     return txHash
 }
 
 const batchBurnToken = async (burnPrivkeys) => {
     // prepare account which have enough sudt to burn
     await prepareAccounts(RichPrivkey,burnPrivkeys)
+    await initToken(tokenAddress)
 
     console.error("*************************************      start lock      ***************************************");
     let nonce = await web3.eth.getTransactionCount(USER_ETH_ADDR)
@@ -293,12 +295,7 @@ const batchBurnToken = async (burnPrivkeys) => {
     console.log("****************** end lock , please wait 3 mintue to relay lock proof and relay *******************");
     // await batchMintToken(waitMintTxs);
     // wait relay the lock tx proof to CKB
-    // await sleep(4 * 60 * 1000);
-    // for (let i = 0; i < lockHashes.length; i++) {
-    //     for (let j = 0; j < lockHashes[i].length; j++) {
-    //         await getLockStatus(lockHashes[i][j])
-    //     }
-    // }
+
     for (let i = 0; i < burnPrivkeys.length; i++) {
         const addr = ckb.utils.privateKeyToAddress(burnPrivkeys[i], {prefix: 'ckt'})
         await getSudtBalance(addr, tokenAddress)
@@ -312,6 +309,11 @@ const batchBurnToken = async (burnPrivkeys) => {
         burnFutures.push(burnFut);
     }
     const burnHashes = await Promise.all(burnFutures);
+    // let burnHashes = [];
+    // for(let i = 0; i< burnRawTxs.length; i++){
+    //     const txHash = await ckb.rpc.sendTransaction(burnRawTxs[i])
+    //     burnRawTxs.push(txHash)
+    // }
     console.log("burn hashes ", burnHashes);
     console.log("***********************************   end burn and start test interface    ********************************");
 
