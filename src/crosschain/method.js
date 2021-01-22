@@ -115,6 +115,7 @@ const getLockStatus = async (ethLockTxHash) => {
             const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_eth_to_ckb_status`, postData)
             console.log(ethLockTxHash," retry : ", i," eth_to_ckb_status : ",res.data.status," err_msg : ", res.data.err_msg)
             if ( res.data.status === 'success'){
+                console.log(ethLockTxHash,"mint success")
                 break
             }
         }catch (err){

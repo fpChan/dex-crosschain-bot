@@ -259,7 +259,15 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
     }
 
     console.log("burn postData: ", JSON.stringify(postData))
-    const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData);
+    let res;
+    while(res === "" || res === undefined || res == null) {
+        try{
+            res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/burn`, postData, {timeout: 1000 * 60 * 5})
+        } catch(error){
+            console.error("failed to post burn interface: ",error.response.status,error.response.statusText)
+        }
+        await sleep(10*1000)
+    }
     const rawTx = ckb_client.rpc.resultFormatter.toTransaction(res.data.raw_tx)
 
     rawTx.witnesses = rawTx.inputs.map((_, i) => (i > 0 ? '0x' : {
@@ -275,7 +283,6 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
 }
 
 const batchBurnToken = async (burnPrivkeys) => {
-    // prepare account which have enough sudt to burn
     await prepareAccounts(RichPrivkey,burnPrivkeys)
     await initToken(tokenAddress)
 
@@ -309,11 +316,6 @@ const batchBurnToken = async (burnPrivkeys) => {
         burnFutures.push(burnFut);
     }
     const burnHashes = await Promise.all(burnFutures);
-    // let burnHashes = [];
-    // for(let i = 0; i< burnRawTxs.length; i++){
-    //     const txHash = await ckb.rpc.sendTransaction(burnRawTxs[i])
-    //     burnRawTxs.push(txHash)
-    // }
     console.log("burn hashes ", burnHashes);
     console.log("***********************************   end burn and start test interface    ********************************");
 
@@ -324,7 +326,7 @@ const batchBurnToken = async (burnPrivkeys) => {
 }
 
 async function main() {
-    const concurrency_number = 2
+    const concurrency_number = 100
     const burnPrivkeys = generateWallets(concurrency_number);
     fs.writeFileSync(
         'burnPrivkeys',
