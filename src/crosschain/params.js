@@ -93,6 +93,9 @@ const recipientETHAddress = USER_ETH_ADDR
 const unlockFee = "0x1"
 const unlockAmount = "0x2"
 const burnTxFee = "0.1"
+const path = require('path')
+const lumos_db_tmp = "lumos_db_tmp/"
+const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
 
 module.exports = {
     ETH_NODE_URL,
@@ -115,4 +118,6 @@ module.exports = {
     recipientETHAddress,
     unspentRichCells,
     RichPrivkey,
+    lumos_db_tmp,
+    LUMOS_DB,
 }

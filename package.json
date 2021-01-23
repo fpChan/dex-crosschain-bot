@@ -7,7 +7,8 @@
   "author": "kellyshang <https://github.com/kellyshang>",
   "license": "MIT",
   "scripts": {
-    "send": "node src/crosschain/index.js"
+    "send": "node src/crosschain/index.js",
+    "indexer": "node src/crosschain/lumos.js"
   },
   "dependencies": {
     "@ckb-lumos/indexer": "0.14.1",

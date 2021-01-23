@@ -1,5 +1,4 @@
-const path = require('path')
-const os = require('os')
+
 const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
@@ -26,31 +25,18 @@ const {
     recipientETHAddress,
     unspentRichCells,
     RichPrivkey,
+    lumos_db_tmp,
+    LUMOS_DB,
 } = require("./params");
 
 var fs = require('fs');
+const {waitForIndexing,deleteAll} = require("./lumos");
+const {} = require("./params");
 
-function deleteall(path) {
-    var files = [];
-    if(fs.existsSync(path)) {
-        files = fs.readdirSync(path);
-        files.forEach(function(file, index) {
-            var curPath = path + "/" + file;
-            if(fs.statSync(curPath).isDirectory()) { // recurse
-                deleteall(curPath);
-            } else { // delete file
-                fs.unlinkSync(curPath);
-            }
-        });
-        fs.rmdirSync(path);
-    }
-};
+
 
 const ckb = new CKB(NODE_URL);
 const web3 = new Web3(ETH_NODE_URL);
-const lumos_db_tmp = "lumos_db_tmp/"
-const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
-const indexer = new Indexer(NODE_URL, LUMOS_DB)
 
 // const userPWEthLockHash = ckb.utils.scriptToHash(userPWEthLock);
 // console.log("userPWEthLockHash: ", userPWEthLockHash);
@@ -84,44 +70,9 @@ const prepareBridgeCells = async (privkeys,cellNum) => {
 }
 
 
-const getTipBlockNumber = async () => axios({
-    method: 'post',
-    url: NODE_URL,
-    data: {
-        id: 1,
-        jsonrpc: '2.0',
-        method: 'get_tip_block_number',
-        params: [],
-    },
-});
-
-const waitForIndexing = async(timeout) => {
-    if (indexer.running()) {
-        indexer.stop();
-    }
-    indexer.start();
-    const { data: { result: nodeTipBlockNumber } } = await getTipBlockNumber();
-    console.log("nodeTipBlockNumber is: ", nodeTipBlockNumber);
-    const startedAt = Date.now();
-    while (true) {
-
-        const currentTip = await indexer.tip();
-        if (!currentTip) {
-            continue;
-        }
-        if (BigInt(currentTip.block_number) >= BigInt(nodeTipBlockNumber)) {
-            console.log("currentTip is: ", currentTip);
-            break;
-        }
-        if (Date.now() - startedAt > timeout) {
-            console.log("currentTip is: ", currentTip);
-            throw new Error('waiting for indexing is timeout');
-        }
-        await sleep(2000)
-    }
-}
-
 const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
+    const indexer = new Indexer(NODE_URL, LUMOS_DB)
+
     const fromAddress = ckb.utils.privateKeyToAddress(fromPrivkey, {prefix: 'ckt'})
     const fromPublicKey = ckb.utils.privateKeyToPublicKey(fromPrivkey)
     const fromPublicKeyHash = `0x${ckb.utils.blake160(fromPublicKey, 'hex')}`
@@ -132,10 +83,12 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         hashType: "type",
         args: fromPublicKeyHash,
     }
-    await waitForIndexing(4*60*1000)
+    if (!indexer.running()) {
+        await waitForIndexing( indexer,true,4* 60 * 1000)
+    }
     const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
-    indexer.stop()
-    deleteall(lumos_db_tmp)
+    // indexer.stop()
+    // deleteAll(lumos_db_tmp)
     let liveCells = []
     for (let i = 0; i < unspentCells.length; i++) {
         let res = await ckb.rpc.getLiveCell(unspentCells[i].outPoint,false);
