@@ -66,7 +66,7 @@ async function main() {
     await waitForIndexing( indexer,false,4* 60 * 1000)
 }
 
-main();
+// main();
 
 
 module.exports= {

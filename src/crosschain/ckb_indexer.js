@@ -8,13 +8,24 @@ const {
 } = require("@lay2/pw-core");
 const {CKB_INDEXER_URL} = require("./params");
 const {getTipBlockNumber} = require("./lumos");
+const axios = require('axios')
 
 class SDCollector extends Collector {
     indexerUrl = CKB_INDEXER_URL;
 
     async getParams(address) {
+
+    }
+
+    constructor() {
+        super();
+    }
+
+    async getCells(address) {
+        this.cells = [];
+
         const { data: { result: nodeTipBlockNumber } } = await getTipBlockNumber();
-        return {
+        let postData = {
             id: 2,
             jsonrpc: "2.0",
             method: "get_cells",
@@ -26,29 +37,22 @@ class SDCollector extends Collector {
                 "asc",
                 nodeTipBlockNumber,
             ],
-        };
-    }
-
-    constructor() {
-        super();
-    }
-
-    async getCells(address) {
-        this.cells = [];
-
-        const res = await (
-            await fetch(this.indexerUrl, {
-                method: "POST",
-                body: JSON.stringify(await this.getParams(address)),
-                cache: "no-store",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                mode: "cors",
-            })
-        ).json();
-
-        const rawCells = res.result.objects;
+        }
+        // const res = await (
+        //     await fetch(this.indexerUrl, {
+        //         method: "POST",
+        //         body: JSON.stringify(),
+        //         cache: "no-store",
+        //         headers: {
+        //             "Content-Type": "application/json",
+        //         },
+        //         mode: "cors",
+        //     })
+        // ).json();
+         await this.getParams(address);
+        const res = await axios.post(this.indexerUrl,postData);
+        console.log("inderer post response", res )
+        const rawCells = res.data;
 
         for (let rawCell of rawCells) {
             const cell = new Cell(
