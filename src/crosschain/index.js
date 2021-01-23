@@ -204,9 +204,7 @@ const batchMintToken = async (crosschainTxHashes) => {
 const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipientAddress) => {
     const ckb_client = new CKB(NODE_URL);
     const addr = ckb_client.utils.privateKeyToAddress(privkey, {prefix: 'ckt'})
-    if(tokenAddress.indexOf("0x") === 0){
-        tokenAddress = tokenAddress.substring(2)
-    }
+
     const postData = {
         from_lockscript_addr: addr,
         tx_fee: txFee,

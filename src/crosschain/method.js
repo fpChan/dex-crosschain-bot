@@ -38,6 +38,9 @@ const placeCrossChainOrder = async (
     gasPrice,
     nonce
 ) => {
+    if(tokenAddress.indexOf("0x") === 0){
+        tokenAddress = tokenAddress.substring(2)
+    }
     let ethAddress = USER_ETH_ADDR
     console.log("recipientAddress: ", recipientAddress ,"gasPrice, nonce: ", gasPrice, nonce)
 
