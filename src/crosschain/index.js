@@ -1,4 +1,4 @@
-import SDCollector from "./ckb_indexer";
+const {SDCollector} = require("./ckb_indexer");
 
 const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;

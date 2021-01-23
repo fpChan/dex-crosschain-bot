@@ -1,16 +1,19 @@
-import {
+const {
     Collector,
     Amount,
     Cell,
     Script,
     OutPoint,
     AmountUnit,
-} from "@lay2/pw-core";
+} = require("@lay2/pw-core");
+const {CKB_INDEXER_URL} = require("./params");
+const {getTipBlockNumber} = require("./lumos");
 
-export default class SDCollector extends Collector {
-    indexerUrl = "https://prototype.ckbapp.dev/testnet/indexer";
+class SDCollector extends Collector {
+    indexerUrl = CKB_INDEXER_URL;
 
-    getParams(address) {
+    async getParams(address) {
+        const { data: { result: nodeTipBlockNumber } } = await getTipBlockNumber();
         return {
             id: 2,
             jsonrpc: "2.0",
@@ -21,7 +24,7 @@ export default class SDCollector extends Collector {
                     script_type: "lock",
                 },
                 "asc",
-                "0x2710",
+                nodeTipBlockNumber,
             ],
         };
     }
@@ -36,7 +39,7 @@ export default class SDCollector extends Collector {
         const res = await (
             await fetch(this.indexerUrl, {
                 method: "POST",
-                body: JSON.stringify(this.getParams(address)),
+                body: JSON.stringify(await this.getParams(address)),
                 cache: "no-store",
                 headers: {
                     "Content-Type": "application/json",
@@ -78,4 +81,7 @@ export default class SDCollector extends Collector {
 
         return cells.filter((c) => c.isEmpty() && !c.type);
     }
+}
+module.exports={
+    SDCollector
 }

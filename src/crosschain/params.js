@@ -6,6 +6,7 @@
 
 // testnet
 const NODE_URL= 'https://testnet.ckbapp.dev' //add your own api token
+const CKB_INDEXER_URL= 'https://testnet.ckbapp.dev/indexer' //add your own api token
 const FORCE_BRIDGER_SERVER_URL = 'http://127.0.0.1:3003' //update to your force server url
 const ETH_NODE_URL = "https://ropsten.infura.io/v3/71c02c451b6248708e493c4ea007c3b2" //update to your node url
 const signEthPrivateKey = '0xfa534931ed2dde878b474271c62af328bbf4bcfbbf0c6598862d3465d6b3ecb6' //update with your own private key
@@ -120,4 +121,5 @@ module.exports = {
     RichPrivkey,
     lumos_db_tmp,
     LUMOS_DB,
+    CKB_INDEXER_URL,
 }

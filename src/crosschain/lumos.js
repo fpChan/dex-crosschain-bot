@@ -71,5 +71,6 @@ main();
 
 module.exports= {
     waitForIndexing,
-    deleteAll
+    deleteAll,
+    getTipBlockNumber
 }
