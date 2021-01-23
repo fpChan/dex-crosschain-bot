@@ -1,6 +1,7 @@
 const {sleep} = require("./method");
-const {NODE_URL} = require("./params");
+const {NODE_URL,LUMOS_DB} = require("./params");
 const { Indexer, CellCollector } = require('@ckb-lumos/indexer')
+const axios = require('axios')
 
 
 function deleteAll(path) {
@@ -30,13 +31,13 @@ const getTipBlockNumber = async () => axios({
     },
 });
 
-const waitForIndexing = async(indexer_client: Indexer, target_stop: boolean, timeout) => {
-    if (indexer_client.running()) {
-       return true;
-    }
-    indexer_client.startForever();
+const waitForIndexing = async(indexer_client, target_stop, timeout) => {
     const { data: { result: nodeTipBlockNumber } } = await getTipBlockNumber();
-    console.log("nodeTipBlockNumber is: ", nodeTipBlockNumber);
+    console.log("node current BlockNumber is: ", nodeTipBlockNumber);
+    if (!indexer_client.running()) {
+        indexer_client.startForever();
+    }
+
     const startedAt = Date.now();
     while (true) {
 
@@ -53,10 +54,10 @@ const waitForIndexing = async(indexer_client: Indexer, target_stop: boolean, tim
             console.log("currentTip is: ", currentTip);
         }
 
-        if (Date.now() - startedAt > timeout) {
-            console.error("currentTip is: ", currentTip,"waiting for indexing is timeout");
-            // throw new Error('waiting for indexing is timeout');
-        }
+        // if (Date.now() - startedAt > timeout) {
+        //     console.error("currentTip is: ", currentTip,"waiting for indexing is timeout");
+        //     // throw new Error('waiting for indexing is timeout');
+        // }
         await sleep(2000)
     }
 }

@@ -83,9 +83,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         hashType: "type",
         args: fromPublicKeyHash,
     }
-    if (!indexer.running()) {
-        await waitForIndexing( indexer,true,4* 60 * 1000)
-    }
+    await waitForIndexing( indexer,true,4* 60 * 1000)
     const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
     // indexer.stop()
     // deleteAll(lumos_db_tmp)
