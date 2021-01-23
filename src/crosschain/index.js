@@ -1,5 +1,4 @@
 const {SDCollector} = require("./ckb_indexer");
-
 const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
@@ -27,7 +26,7 @@ const {
     unspentRichCells,
     RichPrivkey,
     lumos_db_tmp,
-    LUMOS_DB,
+    // LUMOS_DB,
 } = require("./params");
 
 var fs = require('fs');
@@ -72,8 +71,6 @@ const prepareBridgeCells = async (privkeys,cellNum) => {
 
 
 const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
-    const indexer = new Indexer(NODE_URL, LUMOS_DB)
-    const ckb_collect =  new SDCollector()
     const fromAddress = ckb.utils.privateKeyToAddress(fromPrivkey, {prefix: 'ckt'})
     const fromPublicKey = ckb.utils.privateKeyToPublicKey(fromPrivkey)
     const fromPublicKeyHash = `0x${ckb.utils.blake160(fromPublicKey, 'hex')}`
@@ -84,16 +81,21 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         hashType: "type",
         args: fromPublicKeyHash,
     }
+
+    // const indexer = new Indexer(NODE_URL, LUMOS_DB)
     // await waitForIndexing( indexer,true,4* 60 * 1000)
     // const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
-    const unspentCells = await ckb_collect.getCells(fromAddress);
-    console.log("unspentCells",unspentCells)
     // indexer.stop()
     // deleteAll(lumos_db_tmp)
+
+    const ckb_collect =  new SDCollector()
+    const unspentCells = await ckb_collect.getCells(fromPublicKeyHash);
+    console.log("unspentCells",unspentCells)
+
     let liveCells = []
     for (let i = 0; i < unspentCells.length; i++) {
         let res = await ckb.rpc.getLiveCell(unspentCells[i].outPoint,false);
-        console.log("cell capacity: ",unspentCells[i].capacity, " cell status: ", res.status)
+        console.log("cell capacity: ",res.cell.output.capacity, " cell status: ", res.status)
         if(res.status === 'live') {
             liveCells.push(unspentCells[i])
         }
@@ -103,7 +105,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
     let tx = ckb.generateRawTransaction({
         fromAddress,
         toAddress: "ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
-        capacity: BigInt(1500000000000),
+        capacity: BigInt(15000_00000000),
         fee: BigInt(100000),
         safeMode: true,
         cells: liveCells,
@@ -116,7 +118,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
     console.log("restCapacity: ",restCapacity)
     tx.outputs.splice(0,   tx.outputs.length);
     tx.outputsData.splice(0,   tx.outputsData.length);
-    let capacity = BigInt( 150000000000);
+    let capacity = BigInt( 1000_00000000);
     for (let i = 0; i < toPrivkeys.length; i++) {
         // const addr = ckb.utils.privateKeyToAddress(toPrivkeys[i], {prefix: 'ckt'})
         const publicKey = ckb.utils.privateKeyToPublicKey(toPrivkeys[i])
@@ -164,7 +166,6 @@ const batchLockToken = async (recipientCKBAddress, cellNum, nonce) => {
     // console.log("bridgeCells",bridgeCells);
 
     const gasPrice = await web3.eth.getGasPrice()
-    // const nonce = await web3.eth.getTransactionCount(USER_ETH_ADDR)
     const send_with_outpoint = async (index) => {
         const txFromBridge = await placeCrossChainOrder(index, "", udtDecimal, recipientCKBAddress, orderPrice, orderAmount, isBid, tokenAddress, bridgeFee, gasPrice, nonce + index);
         const res = await web3.eth.accounts.signTransaction(txFromBridge.data, signEthPrivateKey);
@@ -203,6 +204,9 @@ const batchMintToken = async (crosschainTxHashes) => {
 const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipientAddress) => {
     const ckb_client = new CKB(NODE_URL);
     const addr = ckb_client.utils.privateKeyToAddress(privkey, {prefix: 'ckt'})
+    if(tokenAddress.indexOf("0x") === 0){
+        tokenAddress = tokenAddress.substring(2)
+    }
     const postData = {
         from_lockscript_addr: addr,
         tx_fee: txFee,
@@ -284,7 +288,7 @@ const batchBurnToken = async (burnPrivkeys) => {
 }
 
 async function main() {
-    const concurrency_number = 100
+    const concurrency_number = 2
     const burnPrivkeys = generateWallets(concurrency_number);
     fs.writeFileSync(
         'burnPrivkeys',

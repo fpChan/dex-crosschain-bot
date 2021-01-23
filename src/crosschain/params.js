@@ -11,8 +11,14 @@ const FORCE_BRIDGER_SERVER_URL = 'http://127.0.0.1:3003' //update to your force 
 const ETH_NODE_URL = "https://ropsten.infura.io/v3/71c02c451b6248708e493c4ea007c3b2" //update to your node url
 const signEthPrivateKey = '0xfa534931ed2dde878b474271c62af328bbf4bcfbbf0c6598862d3465d6b3ecb6' //update with your own private key
 const USER_ETH_ADDR = '0x8a0F5A1724F73B67C7464b8a61C8c37C1f78B057'//orig; bob:'0xBeB7C1d39B59DF17613F82AF0EC265565414d608'
-const RichPrivkey = "0xec7d9cbdaa76525af58a9d5efba4cc4ed820f8ed611c0f7a66789411ab8b50ea";
+const RichPrivkey = "0x11429452ecc210812bf2ded107f500e9d6f6191334a2b2aeae61dafa30cfd7e0";
+//0xb22b07bb70663b6949d63d46f635a18fe5fbb28698f85936113e894e6190147a（账户无钱）
+//0xec7d9cbdaa76525af58a9d5efba4cc4ed820f8ed611c0f7a66789411ab8b50ea（账户无钱）
 
+// 这是config.toml 的账户，暂时没动
+//  "fba2e9fbff43191ef7dfc18790dfe8f052ad3894d279557e64f1c253f5380ee9",
+//   "d0acb7ebac6def1cee480c96001b7dae224d12c0b25b15dbb6f02e416c9667d0",
+//   "3af6ab9d7f96953bfbd9520eb6b2703635af91b1b7a86115bd9bfd337c705166"
 
 // const RichPrivkey = "0xa6b023fec4fc492c23c0e999ab03b01a6ca5524a3560725887a8de4362f9c9cc";
 const unspentRichCells = [
@@ -96,7 +102,8 @@ const unlockAmount = "0x2"
 const burnTxFee = "0.1"
 const path = require('path')
 const lumos_db_tmp = "lumos_db_tmp/"
-const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
+// const LUMOS_DB = path.join(lumos_db_tmp, 'lumos_db')
+const LUMOS_DB = ""
 
 module.exports = {
     ETH_NODE_URL,

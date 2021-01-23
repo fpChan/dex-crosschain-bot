@@ -189,6 +189,9 @@ const getCrosschainHistory = async (ethRecipientAddr) => {
 }
 
 const initToken = async (token_addr) => {
+    if(token_addr.indexOf("0x") === 0){
+        token_addr = token_addr.substring(2)
+    }
     const postData = {
         token_address:token_addr
     }

@@ -7,15 +7,11 @@ const {
     AmountUnit,
 } = require("@lay2/pw-core");
 const {CKB_INDEXER_URL} = require("./params");
-const {getTipBlockNumber} = require("./lumos");
 const axios = require('axios')
+const {sleep} = require("./method");
 
 class SDCollector extends Collector {
     indexerUrl = CKB_INDEXER_URL;
-
-    async getParams(address) {
-
-    }
 
     constructor() {
         super();
@@ -23,46 +19,51 @@ class SDCollector extends Collector {
 
     async getCells(address) {
         this.cells = [];
-
-        const { data: { result: nodeTipBlockNumber } } = await getTipBlockNumber();
         let postData = {
-            id: 2,
-            jsonrpc: "2.0",
-            method: "get_cells",
-            params: [
+            "id": 2,
+            "jsonrpc": "2.0",
+            "method": "get_cells",
+            "params": [
                 {
-                    script: address.toLockScript().serializeJson(),
-                    script_type: "lock",
+                    "script": {
+                        "code_hash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+                        "hash_type": "type",
+                        "args": address
+                    },
+                    "script_type": "lock"
                 },
                 "asc",
-                nodeTipBlockNumber,
-            ],
+                "0x64"
+            ]
+        };
+        let res;
+        while (res === "" || res === undefined || res == null) {
+            try {
+                res = await axios.post(`${this.indexerUrl}`, postData);
+                console.log("indexer response", res.data)
+            }catch (error) {
+                console.error("failed to get indexer data", error)
+            }
+            await sleep(5*1000)
         }
-        // const res = await (
-        //     await fetch(this.indexerUrl, {
-        //         method: "POST",
-        //         body: JSON.stringify(),
-        //         cache: "no-store",
-        //         headers: {
-        //             "Content-Type": "application/json",
-        //         },
-        //         mode: "cors",
-        //     })
-        // ).json();
-         await this.getParams(address);
-        const res = await axios.post(this.indexerUrl,postData);
-        console.log("inderer post response", res )
-        const rawCells = res.data;
-
+       
+        const rawCells = res.data.result.objects;
+        console.log("inderer post response", rawCells )
         for (let rawCell of rawCells) {
-            const cell = new Cell(
-                new Amount(rawCell.output.capacity, AmountUnit.shannon),
-                Script.fromRPC(rawCell.output.lock),
-                Script.fromRPC(rawCell.output.type),
-                OutPoint.fromRPC(rawCell.out_point),
-                rawCell.output_data
-            );
-
+            // const cell = new Cell(
+            //     new Amount(rawCell.output.capacity, AmountUnit.shannon),
+            //     Script.fromRPC(rawCell.output.lock),
+            //     Script.fromRPC(rawCell.output.type),
+            //     OutPoint.fromRPC(rawCell.out_point),
+            //     rawCell.output_data
+            // );
+            const cell = {
+                capacity: rawCell.output.capacity,
+                lock: Script.fromRPC(rawCell.output.lock),
+                type: Script.fromRPC(rawCell.output.type),
+                outPoint:OutPoint.fromRPC(rawCell.out_point),
+                data:rawCell.output_data
+            };
             this.cells.push(cell);
         }
         return this.cells;
