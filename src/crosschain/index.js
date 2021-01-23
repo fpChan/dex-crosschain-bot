@@ -1,3 +1,4 @@
+import SDCollector from "./ckb_indexer";
 
 const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
@@ -72,7 +73,7 @@ const prepareBridgeCells = async (privkeys,cellNum) => {
 
 const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
     const indexer = new Indexer(NODE_URL, LUMOS_DB)
-
+    const ckb_collect =  new SDCollector()
     const fromAddress = ckb.utils.privateKeyToAddress(fromPrivkey, {prefix: 'ckt'})
     const fromPublicKey = ckb.utils.privateKeyToPublicKey(fromPrivkey)
     const fromPublicKeyHash = `0x${ckb.utils.blake160(fromPublicKey, 'hex')}`
@@ -83,8 +84,10 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         hashType: "type",
         args: fromPublicKeyHash,
     }
-    await waitForIndexing( indexer,true,4* 60 * 1000)
-    const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
+    // await waitForIndexing( indexer,true,4* 60 * 1000)
+    // const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
+    const unspentCells = await ckb_collect.getCells(fromAddress);
+    console.log("unspentCells",unspentCells)
     // indexer.stop()
     // deleteAll(lumos_db_tmp)
     let liveCells = []
