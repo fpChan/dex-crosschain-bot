@@ -137,7 +137,7 @@ const getBurnStatus = async (ckb_burn_tx_hash) => {
             const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_ckb_to_eth_status`, postData)
             console.log(ckb_burn_tx_hash," retry : ", i," eth_to_ckb_status : ",res.data.status)
             if ( res.data.status === 'success'){
-                console.log(ckb_burn_tx_hash,"mint success")
+                console.log(ckb_burn_tx_hash,"burn success")
                 break
             }
         }catch (err){
