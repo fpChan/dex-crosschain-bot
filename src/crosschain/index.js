@@ -286,7 +286,7 @@ const batchBurnToken = async (burnPrivkeys) => {
 }
 
 async function main() {
-    const concurrency_number = 2
+    const concurrency_number = 50
     const burnPrivkeys = generateWallets(concurrency_number);
     fs.writeFileSync(
         'burnPrivkeys',
