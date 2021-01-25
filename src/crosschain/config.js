@@ -1,12 +1,15 @@
-/* local config */
-const ETH_NODE_URL= 'http://127.0.0.1:8545'
+// testnet config
+const NODE_URL= 'https://testnet.ckbapp.dev' // https://testnet.ckbapp.dev
+const CKB_INDEXER_URL= 'https://testnet.ckbapp.dev/indexer' //https://testnet.ckbapp.dev/indexer
 const FORCE_BRIDGER_SERVER_URL = 'http://127.0.0.1:3003' //update to your force server url
-const CKB_INDEXER_URL= 'http://127.0.0.1:8116'
-const NODE_URL = 'http://127.0.0.1:8114/' //update to your node url
-const RichCKBPrivkey = "0xa6b023fec4fc492c23c0e999ab03b01a6ca5524a3560725887a8de4362f9c9cc";
-const RichETHPrivkey = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a' //update with your own private key
-const recipientETHAddress = '0x17c4b5CE0605F63732bfd175feCe7aC6b4620FD2'//orig; bob:'0xBeB7C1d39B59DF17613F82AF0EC265565414d608'
+const ETH_NODE_URL = "https://ropsten.infura.io/v3/71c02c451b6248708e493c4ea007c3b2" //update to your node url
+const RichCKBPrivkey = "0x11429452ecc210812bf2ded107f500e9d6f6191334a2b2aeae61dafa30cfd7e0"; //CKB Testnet Rich
+const RichETHPrivkey = '0xfa534931ed2dde878b474271c62af328bbf4bcfbbf0c6598862d3465d6b3ecb6' // ETH Ropsten Rich
+const recipientETHAddress = "0x8a0F5A1724F73B67C7464b8a61C8c37C1f78B057" // RichETHPrivkey： 0xfa534931ed2dde878b474271c62af328bbf4bcfbbf0c6598862d3465d6b3ecb6
 
+// backup privkeys ckb
+//0xb22b07bb70663b6949d63d46f635a18fe5fbb28698f85936113e894e6190147a
+//0xec7d9cbdaa76525af58a9d5efba4cc4ed820f8ed611c0f7a66789411ab8b50ea
 
 const ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000'
 // Test config
