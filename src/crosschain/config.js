@@ -1,7 +1,7 @@
 /* local config */
 const ETH_NODE_URL= 'http://127.0.0.1:8545'
 const FORCE_BRIDGER_SERVER_URL = 'http://127.0.0.1:3003' //update to your force server url
-const CKB_INDEXER_URL= '"http://127.0.0.1:8116"'
+const CKB_INDEXER_URL= 'http://127.0.0.1:8116'
 const NODE_URL = 'http://127.0.0.1:8114/' //update to your node url
 const RichCKBPrivkey = "0xa6b023fec4fc492c23c0e999ab03b01a6ca5524a3560725887a8de4362f9c9cc";
 const RichETHPrivkey = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a' //update with your own private key

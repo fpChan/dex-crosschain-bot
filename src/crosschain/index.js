@@ -247,8 +247,8 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
 
 const batchLockToken = async (burnPrivkeys,crossToken) => {
     console.log("*************************  start lock ", crossToken.tokenAddress, "      ********************************");
-    let richETHAddr = web3.eth.accounts.privateKeyToAccount(RichETHPrivkey)
-    let nonce = await web3.eth.getTransactionCount(richETHAddr.address)
+    let richETHAddr = web3.eth.accounts.privateKeyToAccount(RichETHPrivkey).address
+    let nonce = await web3.eth.getTransactionCount(richETHAddr)
     console.log("rich eth account", richETHAddr, "start nonce :", nonce);
     const cellNum = 1
     let lockFutures = [];
@@ -262,7 +262,7 @@ const batchLockToken = async (burnPrivkeys,crossToken) => {
     console.log("lock hashes ", lockHashes);
     // await batchMintToken(waitMintTxs);
     // wait relay the lock tx proof to CKB
-    console.log("***************************  start lock ", crossToken.tokenAddress, "      ********************************");
+    console.log("***************************  end lock ", crossToken.tokenAddress, "      ********************************");
 }
 
 const batchBurnToken = async (burnPrivkeys,crossToken) => {
@@ -299,8 +299,8 @@ const crossChain = async (burnPrivkeys, crossToken) => {
 
 
 async function main() {
-    const concurrency_number = 50
-    const cross_chain_tokens = ["ETH","DAI"]
+    const concurrency_number = 2
+    const cross_chain_tokens = ["ETH"]
     const burnPrivkeys = generateWallets(concurrency_number);
     fs.writeFileSync(
         'burnPrivkeys',

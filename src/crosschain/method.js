@@ -119,7 +119,7 @@ const getLockStatus = async (ethLockTxHash) => {
     while (true) {
         try {
             const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_eth_to_ckb_status`, postData)
-            console.log(ethLockTxHash," retry : ", i," eth_to_ckb_status : ",res.data.status," err_msg : ", res.data.err_msg)
+            console.log("lock",ethLockTxHash," retry : ", i," eth_to_ckb_status : ",res.data.status," err_msg : ", res.data.err_msg)
             if ( res.data.status === 'success'){
                 console.log(ethLockTxHash,"mint success")
                 break
@@ -141,7 +141,7 @@ const getBurnStatus = async (ckb_burn_tx_hash) => {
     while (true) {
         try {
             const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_ckb_to_eth_status`, postData)
-            console.log(ckb_burn_tx_hash," retry : ", i," eth_to_ckb_status : ",res.data.status)
+            console.log("burn ",ckb_burn_tx_hash," retry : ", i," ckb_to_eth_status : ",res.data.status)
             if ( res.data.status === 'success'){
                 console.log(ckb_burn_tx_hash,"burn success")
                 break
