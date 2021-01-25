@@ -3,18 +3,21 @@ const axios = require('axios')
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const Web3 = require('web3')
 const { Indexer, CellCollector } = require('@ckb-lumos/indexer')
-const {getOrCreateBridgeCell,placeCrossChainOrder,sleep,getLockStatus,getCrosschainHistory,getSudtBalance,getBestBlockHeight,initToken,getBurnStatus} = require("./method");
+const {getOrCreateBridgeCell,
+    placeCrossChainOrder,
+    sleep,getLockStatus,
+    getCrosschainHistory,
+    getSudtBalance,
+    getBestBlockHeight,
+    initToken,
+    getBurnStatus,
+    prepareERCToken} = require("./method");
 const {
     ETH_NODE_URL,
     FORCE_BRIDGER_SERVER_URL,
     NODE_URL,
-    signEthPrivateKey,
-    USER_ETH_ADDR,
+    RichETHPrivkey,
     userPWEthLock,
-    tokenAddress,
-    udtDecimal,
-    orderPrice,
-    orderAmount,
     bridgeFee,
     isBid,
     unlockFee,
@@ -23,16 +26,15 @@ const {
     ORDERBOOK_LOCK_CODEHASH,
     ORDERBOOK_LOCK_TYPE,
     recipientETHAddress,
-    unspentRichCells,
-    RichPrivkey,
+    RichCKBPrivkey,
     lumos_db_tmp,
-    // LUMOS_DB,
-} = require("./params");
+    LUMOS_DB,
+    TokenLockerAddress,
+    ETH_TOKEN_ADDRESS,
+} = require("./config");
 
-var fs = require('fs');
-const {waitForIndexing,deleteAll} = require("./lumos");
-const {} = require("./params");
-
+const fs = require('fs');
+const {waitForIndexing,deleteAll} = require("./ckb_lumos");
 
 
 const ckb = new CKB(NODE_URL);
@@ -57,7 +59,7 @@ const generateWallets = (size) => {
     return privkeys;
 }
 
-const prepareBridgeCells = async (privkeys,cellNum) => {
+const prepareBridgeCells = async (privkeys,cellNum,tokenAddress) => {
     let createFutures = [];
     for (let i = 0; i < privkeys.length; i++) {
         const addr = ckb.utils.privateKeyToAddress(privkeys[i], {prefix: 'ckt'})
@@ -74,7 +76,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
     const fromAddress = ckb.utils.privateKeyToAddress(fromPrivkey, {prefix: 'ckt'})
     const fromPublicKey = ckb.utils.privateKeyToPublicKey(fromPrivkey)
     const fromPublicKeyHash = `0x${ckb.utils.blake160(fromPublicKey, 'hex')}`
-    console.log("rich account : ",fromAddress)
+    console.log("rich ckb account : ",fromAddress)
     await ckb.loadDeps()
     let lock =    {
         codeHash: "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
@@ -82,6 +84,7 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
         args: fromPublicKeyHash,
     }
 
+    /* lomus indexer which is useless*/
     // const indexer = new Indexer(NODE_URL, LUMOS_DB)
     // await waitForIndexing( indexer,true,4* 60 * 1000)
     // const unspentCells = await ckb.loadCells({ indexer, CellCollector, lock })
@@ -159,16 +162,16 @@ const prepareAccounts = async (fromPrivkey, toPrivkeys) => {
 
 
 
-const batchLockToken = async (recipientCKBAddress, cellNum, nonce) => {
+const lockToken = async (recipientCKBAddress, cellNum,crossToken, lockTxSender, nonce) => {
     // bridge has been created
-    // let get_res = await getOrCreateBridgeCell(recipientCKBAddress, tokenAddress, bridgeFee, cellNum);
+    // let get_res = await getOrCreateBridgeCell(recipientCKBAddress, crossToken.tokenAddress, bridgeFee, cellNum);
     // let bridgeCells = [...get_res.data.outpoints];
     // console.log("bridgeCells",bridgeCells);
 
     const gasPrice = await web3.eth.getGasPrice()
     const send_with_outpoint = async (index) => {
-        const txFromBridge = await placeCrossChainOrder(index, "", udtDecimal, recipientCKBAddress, orderPrice, orderAmount, isBid, tokenAddress, bridgeFee, gasPrice, nonce + index);
-        const res = await web3.eth.accounts.signTransaction(txFromBridge.data, signEthPrivateKey);
+        const txFromBridge = await placeCrossChainOrder(index, "", crossToken.udtDecimal, recipientCKBAddress, crossToken.orderPrice, crossToken.orderAmount, isBid, crossToken.tokenAddress, bridgeFee, gasPrice, lockTxSender,nonce + index);
+        const res = await web3.eth.accounts.signTransaction(txFromBridge.data, RichETHPrivkey);
         const rawTX = res.rawTransaction;
         const receipt = await web3.eth.sendSignedTransaction(rawTX);
         if (!receipt.status) {
@@ -242,42 +245,43 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
     return txHash
 }
 
-const batchBurnToken = async (burnPrivkeys) => {
-    await prepareAccounts(RichPrivkey,burnPrivkeys)
-    await initToken(tokenAddress)
-
-    console.error("*************************************      start lock      ***************************************");
-    let nonce = await web3.eth.getTransactionCount(USER_ETH_ADDR)
-    console.log("start nonce :", nonce);
+const batchLockToken = async (burnPrivkeys,crossToken) => {
+    console.log("*************************  start lock ", crossToken.tokenAddress, "      ********************************");
+    let richETHAddr = web3.eth.accounts.privateKeyToAccount(RichETHPrivkey)
+    let nonce = await web3.eth.getTransactionCount(richETHAddr.address)
+    console.log("rich eth account", richETHAddr, "start nonce :", nonce);
     const cellNum = 1
     let lockFutures = [];
     for (let i = 0; i < burnPrivkeys.length; i++) {
         const addr = ckb.utils.privateKeyToAddress(burnPrivkeys[i], {prefix: 'ckt'})
-        let lockFut = batchLockToken(addr, cellNum, nonce);
+        let lockFut = lockToken(addr, cellNum, crossToken,richETHAddr,nonce);
         lockFutures.push(lockFut);
         nonce = nonce + cellNum;
     }
     const lockHashes = await Promise.all(lockFutures);
     console.log("lock hashes ", lockHashes);
-    console.log("****************** end lock , please wait 3 mintue to relay lock proof and relay *******************");
     // await batchMintToken(waitMintTxs);
     // wait relay the lock tx proof to CKB
+    console.log("***************************  start lock ", crossToken.tokenAddress, "      ********************************");
+}
 
+const batchBurnToken = async (burnPrivkeys,crossToken) => {
+
+    console.log("**************************   start query ", crossToken.tokenAddress, " balance ********************************");
     for (let i = 0; i < burnPrivkeys.length; i++) {
         const addr = ckb.utils.privateKeyToAddress(burnPrivkeys[i], {prefix: 'ckt'})
-        await getSudtBalance(addr, tokenAddress)
+        let balance = await getSudtBalance(addr, crossToken.tokenAddress)
     }
 
-    console.log("**********************************        start burn sudt        ***********************************");
-    // burn those account sudt
+    console.log("************************     start burn ", crossToken.tokenAddress, "   ***********************************");
     let burnFutures = [];
     for (let i = 0; i < burnPrivkeys.length; i++) {
-        let burnFut = burnToken(burnPrivkeys[i], burnTxFee, unlockFee, unlockAmount, tokenAddress, recipientETHAddress);
+        let burnFut = burnToken(burnPrivkeys[i], burnTxFee, unlockFee, unlockAmount, crossToken.tokenAddress, recipientETHAddress);
         burnFutures.push(burnFut);
     }
     const burnHashes = await Promise.all(burnFutures);
     console.log("burn hashes ", burnHashes);
-    console.log("***********************************   end burn and start test interface    ********************************");
+    console.log("********************* end burn ", crossToken.tokenAddress, " and start test interface    ********************************");
 
     await getBestBlockHeight()
     await getCrosschainHistory(recipientETHAddress.toLowerCase())
@@ -285,16 +289,31 @@ const batchBurnToken = async (burnPrivkeys) => {
     console.log("***********************************   end test interface    ********************************");
 }
 
+
+const crossChain = async (burnPrivkeys, crossToken) => {
+    await prepareAccounts(RichCKBPrivkey,burnPrivkeys)
+    await initToken(crossToken.tokenAddress)
+    await batchLockToken(burnPrivkeys,crossToken)
+    await batchBurnToken(burnPrivkeys,crossToken)
+}
+
+
 async function main() {
     const concurrency_number = 50
+    const cross_chain_tokens = ["ETH","DAI"]
     const burnPrivkeys = generateWallets(concurrency_number);
     fs.writeFileSync(
         'burnPrivkeys',
         JSON.stringify(burnPrivkeys, null, 2)
     );
-    console.log("generate keys",burnPrivkeys)
-    await batchBurnToken(burnPrivkeys);
+    console.log("generate ckb keys for receive sudt ",burnPrivkeys)
 
+    let tokens_map = prepareERCToken()
+
+    for (let i = 0; i < cross_chain_tokens.length; i++) {
+        let cross_token = tokens_map.get(cross_chain_tokens[i])
+        await crossChain(burnPrivkeys, cross_token)
+    }
 }
 
 main();

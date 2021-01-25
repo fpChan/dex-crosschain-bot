@@ -1,6 +1,6 @@
 const {sleep} = require("./method");
-const {NODE_URL,LUMOS_DB} = require("./params");
-const { Indexer, CellCollector } = require('@ckb-lumos/indexer')
+const {NODE_URL,LUMOS_DB} = require("./config");
+const { Indexer} = require('@ckb-lumos/indexer')
 const axios = require('axios')
 
 

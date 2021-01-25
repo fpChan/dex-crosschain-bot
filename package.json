@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "send": "node src/crosschain/index.js",
-    "indexer": "node src/crosschain/lumos.js"
+    "indexer": "node src/crosschain/ckb_lumos.js"
   },
   "dependencies": {
     "@ckb-lumos/indexer": "0.14.1",

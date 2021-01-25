@@ -15,6 +15,11 @@
 - 修改并发数量 : `index.js`
   
   `const concurrency_number = 2`
-- yarn : 下载依赖
-- yarn send 执行操作
+
+```
+
+```
+  
+- cd dex-crosschain-bot && yarn : 下载依赖
+- cd dex-crosschain-bot && yarn send 执行操作
 

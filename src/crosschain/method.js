@@ -2,8 +2,12 @@ const BufferParser = require("../utils/buffer");
 const axios = require("axios");
 const {
     FORCE_BRIDGER_SERVER_URL,
-    USER_ETH_ADDR,
-} = require("./params");
+    DAI_TOKEN_ADDRESS,
+    USDT_TOKEN_ADDRESS,
+    USDC_TOKEN_ADDRESS,
+    ETH_TOKEN_ADDRESS,
+} = require("./config");
+
 
 const getOrCreateBridgeCell = async (
     recipientCkbAddress,
@@ -36,12 +40,11 @@ const placeCrossChainOrder = async (
     tokenAddress,
     bridgeFee,
     gasPrice,
-    nonce
+    ethAddress,nonce
 ) => {
     if(tokenAddress.indexOf("0x") === 0){
         tokenAddress = tokenAddress.substring(2)
     }
-    let ethAddress = USER_ETH_ADDR
     console.log("recipientAddress: ", recipientAddress ,"gasPrice, nonce: ", gasPrice, nonce)
 
     const sudtRelatedData = sudtExtraData(marketPrice, orderAmount, isBid, udtDecimal);
@@ -160,6 +163,7 @@ const getSudtBalance = async (ckb_address,eth_token_address) => {
     try {
         const res = await axios.post(`${FORCE_BRIDGER_SERVER_URL}/get_sudt_balance`, postData)
         console.log("sudt balance of ", ckb_address, " is : ",res.data.balance)
+        return res.data.balance
     }catch (err){
         console.error("failed get_sudt_balance of ", ckb_address," error : ",err.response.data)
     }
@@ -206,6 +210,40 @@ const initToken = async (token_addr) => {
     }
 }
 
+const prepareERCToken = () => {
+    let tokenInfos = new Map(); // 空Map
+    let ETHToken = {
+        tokenAddress: ETH_TOKEN_ADDRESS,
+        udtDecimal:18n,
+        orderPrice: 1300,
+        orderAmount: 1
+    }
+    let DAIToken = {
+        tokenAddress: DAI_TOKEN_ADDRESS,
+        udtDecimal:18n,
+        orderPrice: 20,
+        orderAmount: 1
+    }
+    let USDTToken = {
+        tokenAddress: USDT_TOKEN_ADDRESS,
+        udtDecimal:6n,
+        orderPrice: 40,
+        orderAmount: 1
+    }
+    let USDCToken = {
+        tokenAddress: USDC_TOKEN_ADDRESS,
+        udtDecimal:6n,
+        orderPrice: 30,
+        orderAmount: 1
+    }
+    tokenInfos.set("ETH", ETHToken)
+    tokenInfos.set("DAI", DAIToken)
+    tokenInfos.set("USDT", USDTToken)
+    tokenInfos.set("USDC", USDCToken)
+    return tokenInfos
+}
+
+
 module.exports= {
     placeCrossChainOrder,
     getOrCreateBridgeCell,
@@ -215,5 +253,6 @@ module.exports= {
     getSudtBalance,
     getBestBlockHeight,
     getCrosschainHistory,
-    initToken
+    initToken,
+    prepareERCToken,
 }

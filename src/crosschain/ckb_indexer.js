@@ -6,7 +6,7 @@ const {
     OutPoint,
     AmountUnit,
 } = require("@lay2/pw-core");
-const {CKB_INDEXER_URL} = require("./params");
+const {CKB_INDEXER_URL} = require("./config");
 const axios = require('axios')
 const {sleep} = require("./method");
 
