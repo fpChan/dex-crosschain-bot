@@ -47,20 +47,20 @@ const placeCrossChainOrder = async (
     }
     console.log("recipientAddress: ", recipientAddress ,"gasPrice, nonce: ", gasPrice, nonce)
 
-    const sudtRelatedData = sudtExtraData(marketPrice, orderAmount, isBid, udtDecimal);
-    const amount = BufferParser.toHexString(sudtRelatedData.payAmount)
+    // const sudtRelatedData = sudtExtraData(marketPrice, orderAmount, isBid, udtDecimal);
+    // const amount = BufferParser.toHexString(sudtRelatedData.payAmount)
     // let recipientAddress = recipientCKBAddress;
     // let op = bridgeCells[index]
-    let sudtData = sudtRelatedData.orderData;
+    // let sudtData = sudtRelatedData.orderData;
 
     const postData = {
         sender: ethAddress,
         token_address: tokenAddress,
-        amount: BufferParser.toHexString(amount),
+        amount: BufferParser.toHexString("100000"),
         bridge_fee: bridgeFee,
         ckb_recipient_address: recipientAddress,
         replay_resist_outpoint: "",
-        sudt_extra_data: sudtData,
+        sudt_extra_data: "",
         gas_price: BufferParser.toHexString(gasPrice),
         nonce: BufferParser.toHexString(nonce),
     }
