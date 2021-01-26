@@ -300,7 +300,7 @@ const crossChain = async (burnPrivkeys, crossToken) => {
 
 async function main() {
     const concurrency_number = 2
-    const cross_chain_tokens = ["ETH"]
+    const cross_chain_tokens = ["ETH","DAI"]
     const burnPrivkeys = generateWallets(concurrency_number);
     fs.writeFileSync(
         'burnPrivkeys',
