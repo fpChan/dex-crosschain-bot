@@ -183,7 +183,7 @@ const lockToken = async (recipientCKBAddress, cellNum,crossToken, lockTxSender, 
         if(txHash.indexOf("0x") === 0){
             txHash = txHash.substring(2)
         }
-        await getLockStatus(txHash)
+        // await getLockStatus(txHash)
         return txHash;
     }
 
@@ -241,7 +241,7 @@ const burnToken = async (privkey, txFee, unlockFee, amount, tokenAddress, recipi
     if(txHash.indexOf("0x") === 0){
         txHash = txHash.substring(2)
     }
-    await getBurnStatus(txHash)
+    // await getBurnStatus(txHash)
     return txHash
 }
 
@@ -263,10 +263,10 @@ const batchLockToken = async (burnPrivkeys,crossToken) => {
     // await batchMintToken(waitMintTxs);
     // wait relay the lock tx proof to CKB
     console.log("***************************  end lock ", crossToken.tokenAddress, "      ********************************");
+    return lockHashes
 }
 
 const batchBurnToken = async (burnPrivkeys,crossToken) => {
-
     console.log("**************************   start query ", crossToken.tokenAddress, " balance ********************************");
     for (let i = 0; i < burnPrivkeys.length; i++) {
         const addr = ckb.utils.privateKeyToAddress(burnPrivkeys[i], {prefix: 'ckt'})
@@ -282,38 +282,77 @@ const batchBurnToken = async (burnPrivkeys,crossToken) => {
     const burnHashes = await Promise.all(burnFutures);
     console.log("burn hashes ", burnHashes);
     console.log("********************* end burn ", crossToken.tokenAddress, " and start test interface    ********************************");
-
-    await getBestBlockHeight()
-    await getCrosschainHistory(recipientETHAddress.toLowerCase())
-
-    console.log("***********************************   end test interface    ********************************");
+    return burnHashes
 }
-
-
-const crossChain = async (burnPrivkeys, crossToken) => {
-    await prepareAccounts(RichCKBPrivkey,burnPrivkeys)
-    await initToken(crossToken.tokenAddress)
-    await batchLockToken(burnPrivkeys,crossToken)
-    await batchBurnToken(burnPrivkeys,crossToken)
-}
-
 
 async function main() {
     const concurrency_number = 2
     const cross_chain_tokens = ["ETH","DAI"]
-    const burnPrivkeys = generateWallets(concurrency_number);
+    const burnEthPrivkeys = generateWallets(concurrency_number);
+    const burnErc20Privkeys = generateWallets(concurrency_number);
+
     fs.writeFileSync(
-        'burnPrivkeys',
-        JSON.stringify(burnPrivkeys, null, 2)
+        'burnEthPrivkeys',
+        JSON.stringify(burnEthPrivkeys, null, 2)
     );
-    console.log("generate ckb keys for receive sudt ",burnPrivkeys)
+    fs.writeFileSync(
+        'burnErc20Privkeys',
+        JSON.stringify(burnErc20Privkeys, null, 2)
+    );
+    console.log("generate ckb keys for receive sudt ",burnEthPrivkeys,burnErc20Privkeys)
 
     let tokens_map = prepareERCToken()
+    let cross_token_eth = tokens_map.get("ETH")
+    let cross_token_dai = tokens_map.get("DAI")
 
-    for (let i = 0; i < cross_chain_tokens.length; i++) {
-        let cross_token = tokens_map.get(cross_chain_tokens[i])
-        await crossChain(burnPrivkeys, cross_token)
+    let allPrivkeys = burnEthPrivkeys.concat(burnErc20Privkeys);
+
+
+    await prepareAccounts(RichCKBPrivkey,allPrivkeys)
+    await initToken(cross_token_eth.tokenAddress)
+    await initToken(cross_token_dai.tokenAddress)
+
+    let eth_lock_hashes = await batchLockToken(burnEthPrivkeys,cross_token_eth)
+    let erc20_lock_hashes = await batchLockToken(burnErc20Privkeys,cross_token_dai)
+
+
+    let queryLockTxStatusFutures = [];
+    for (let i = 0; i < eth_lock_hashes.length; i++){
+        for (let j = 0; j < eth_lock_hashes[i].length; j++){
+            let get_eth_lock_hash_status =  getLockStatus(eth_lock_hashes[i][j])
+            queryLockTxStatusFutures.push(get_eth_lock_hash_status)
+        }
     }
+    for (let i = 0; i < erc20_lock_hashes.length; i++){
+        for (let j = 0; j < erc20_lock_hashes[i].length; j++){
+            let get_erc20_lock_hash_status =  getLockStatus(erc20_lock_hashes[i][j])
+            queryLockTxStatusFutures.push(get_erc20_lock_hash_status)
+        }
+    }
+    await Promise.all(queryLockTxStatusFutures);
+
+    let burnTokenFutures = []
+    burnTokenFutures.push(batchBurnToken(burnEthPrivkeys,cross_token_eth))
+    burnTokenFutures.push(batchBurnToken(burnErc20Privkeys,cross_token_dai))
+    let ckb_burn_hashes = await Promise.all(burnTokenFutures);
+
+    let queryBurnTxStatusFutures = [];
+    for (let i = 0; i < ckb_burn_hashes.length; i++){
+        for (let j = 0; j < ckb_burn_hashes[i].length; j++){
+            let get_eth_lock_hash_status =  getBurnStatus(ckb_burn_hashes[i][j])
+            queryBurnTxStatusFutures.push(get_eth_lock_hash_status)
+        }
+    }
+    await Promise.all(queryBurnTxStatusFutures);
+
+    await getBestBlockHeight()
+    await getCrosschainHistory(recipientETHAddress.toLowerCase())
+
+    console.log("***********************************   start test interface    ********************************");
+    await getBestBlockHeight()
+    await getCrosschainHistory(recipientETHAddress.toLowerCase())
+
+    console.log("***********************************   end all test    ********************************");
 }
 
 main();
